@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neon Heart ✦</title>
+<!-- Google Fonts: Editorial Serif + Clean Sans -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        background-color: #030305;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Inter', sans-serif;
+    }
+
+    #trailCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .main-wrapper {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    /* Core Neon Heart */
+    .heart-container {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        transform: scale(1);
+        transition: transform 0.4s ease;
+    }
+
+    .heart-shape {
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        background-color: #ff085a;
+        top: 25px;
+        left: 25px;
+        transform: rotate(-45deg);
+        box-shadow: 
+            0 0 25px #ff085a,
+            0 0 50px #ff085a,
+            0 0 85px #ff1e6d,
+            0 0 120px rgba(255, 30, 109, 0.4);
+        animation: calmPulse 2.8s infinite ease-in-out;
+    }
+
+    .heart-shape::before,
+    .heart-shape::after {
+        content: "";
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        background-color: #ff085a;
+        border-radius: 50%;
+        box-shadow: 
+            0 0 25px #ff085a,
+            0 0 50px #ff085a;
+    }
+
+    .heart-shape::before {
+        top: -35px;
+        left: 0;
+    }
+
+    .heart-shape::after {
+        left: 35px;
+        top: 0;
+    }
+
+    /* Calm & romantic beating when playing */
+    .beating .heart-shape {
+        animation: gentleHeartbeat 1.8s infinite ease-in-out;
+    }
+
+    @keyframes calmPulse {
+        0%, 100% { transform: rotate(-45deg) scale(0.96); opacity: 0.9; }
+        50% { transform: rotate(-45deg) scale(1.04); opacity: 1; filter: drop-shadow(0 0 20px #ff2a7a); }
+    }
+
+    /* Natural human resting heart rate cadence */
+    @keyframes gentleHeartbeat {
+        0% { transform: rotate(-45deg) scale(0.96); }
+        14% { transform: rotate(-45deg) scale(1.09); }
+        28% { transform: rotate(-45deg) scale(0.98); }
+        42% { transform: rotate(-45deg) scale(1.06); }
+        70% { transform: rotate(-45deg) scale(0.96); }
+        100% { transform: rotate(-45deg) scale(0.96); }
+    }
+
+    /* Subtext styling */
+    .hint-text {
+        margin-top: 65px;
+        font-family: 'Inter', sans-serif;
+        color: #ff99bb;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        opacity: 0.7;
+        transition: opacity 0.5s ease;
+        text-shadow: 0 0 10px rgba(255, 120, 160, 0.4);
+    }
+
+    /* Aesthetic Editorial Note */
+    .dynamic-note {
+        margin-top: 24px;
+        font-family: 'Cormorant Garamond', serif;
+        font-style: italic;
+        font-size: 19px;
+        letter-spacing: 0.02em;
+        color: #fdf2f4;
+        opacity: 0;
+        transform: translateY(12px);
+        transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        text-align: center;
+        max-width: 380px;
+        line-height: 1.6;
+        text-shadow: 0 0 18px rgba(255, 255, 255, 0.25), 0 0 35px rgba(255, 8, 90, 0.35);
+    }
+
+    .dynamic-note.show {
+        opacity: 0.95;
+        transform: translateY(0);
+    }
+</style>
+</head>
+<body>
+
+<canvas id="trailCanvas"></canvas>
+
+<div class="main-wrapper" id="heartWrapper" onclick="togglePlayHeart()">
+    <div class="heart-container" id="heartBox">
+        <div class="heart-shape"></div>
+    </div>
+    <div class="hint-text" id="hint">Tap the heart ✦</div>
+    <div class="dynamic-note" id="note">
+        “Some frequencies only make sense when shared with someone special.”
+    </div>
+</div>
+
+<audio id="bgSong" loop src="song.mp3"></audio>
+
+
+<script>
+    const canvas = document.getElementById('trailCanvas');
+    const ctx = canvas.getContext('2d');
+    const heartBox = document.getElementById('heartBox');
+    const hint = document.getElementById('hint');
+    const note = document.getElementById('note');
+    const song = document.getElementById('bgSong');
+
+    let isPlaying = false;
+    let particles = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Spawns floating glowing hearts with longer drift life
+    function addParticle(x, y) {
+        particles.push({
+            x: x,
+            y: y,
+            size: Math.random() * 8 + 6,
+            speedX: (Math.random() - 0.5) * 0.9,
+            speedY: (Math.random() - 0.5) * 0.9 - 0.35,
+            life: 1.6, // Higher initial life so it stays for 2-3 seconds
+            maxLife: 1.6,
+            color: Math.random() > 0.35 ? '#ff1e6d' : '#ffa3c2'
+        });
+    }
+
+    function handlePointer(e) {
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        for (let i = 0; i < 2; i++) {
+            addParticle(x, y);
+        }
+    }
+
+    window.addEventListener('mousemove', handlePointer);
+    window.addEventListener('touchmove', handlePointer, { passive: true });
+
+    function drawMiniHeart(ctx, x, y, size, color, alpha) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, alpha);
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        const topCurveHeight = size * 0.3;
+        ctx.moveTo(x, y + topCurveHeight);
+        ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + topCurveHeight);
+        ctx.bezierCurveTo(x - size / 2, y + (size + topCurveHeight) / 2, x, y + (size + topCurveHeight) / 2, x, y + size);
+        ctx.bezierCurveTo(x, y + (size + topCurveHeight) / 2, x + size / 2, y + (size + topCurveHeight) / 2, x + size / 2, y + topCurveHeight);
+        ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + topCurveHeight);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function renderParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.speedX;
+            p.y += p.speedY;
+            p.life -= 0.007; // Slow decay rate (~2.5 seconds persistence)
+
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                i--;
+            } else {
+                drawMiniHeart(ctx, p.x, p.y, p.size, p.color, p.life / p.maxLife);
+            }
+        }
+        requestAnimationFrame(renderParticles);
+    }
+    renderParticles();
+
+    function togglePlayHeart() {
+        if (!isPlaying) {
+            song.play();
+            heartBox.classList.add('beating');
+            hint.innerText = "PLAYING FREQUENCY ✦";
+            isPlaying = true;
+            setTimeout(() => {
+                note.classList.add('show');
+            }, 1000);
+        } else {
+            song.pause();
+            heartBox.classList.remove('beating');
+            hint.innerText = "TAP TO RESUME ✦";
+            isPlaying = false;
+        }
+    }
+</script>
+</body>
+</html>
